@@ -1,0 +1,458 @@
+@@ -0,0 +1,457 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package xades4j.production;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.zip.Deflater;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.soap.*;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.io.FileUtils;
+import org.apache.xml.security.c14n.Canonicalizer;
+import org.apache.xml.security.utils.Constants;
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+import org.zeroturnaround.zip.ZipUtil;
+import xades4j.UnsupportedAlgorithmException;
+import xades4j.algorithms.Algorithm;
+import xades4j.algorithms.EnvelopedSignatureTransform;
+import xades4j.algorithms.GenericAlgorithm;
+import static xades4j.production.SignerTestBase.keyingProviderMy;
+import xades4j.properties.DataObjectDesc;
+import xades4j.properties.ObjectIdentifier;
+import xades4j.properties.SignaturePolicyBase;
+import xades4j.properties.SignaturePolicyIdentifierProperty;
+import xades4j.properties.SignaturePolicyImpliedProperty;
+import xades4j.properties.SignerRoleProperty;
+import xades4j.properties.SigningTimeProperty;
+import xades4j.providers.AlgorithmsProviderEx;
+
+import xades4j.providers.SignaturePolicyInfoProvider;
+import xades4j.providers.SignaturePropertiesCollector;
+import xades4j.providers.SignaturePropertiesProvider;
+import xades4j.utils.SignatureServicesTestBase;
+/**
+ *
+ * @author Mohit Java
+ */
+public class SOAPClientSAAJ extends SignatureServicesTestBase{
+     // SAAJ - SOAP Client Testing
+    public static void main(String args[]) throws Exception{
+        int invoicenumber=2015;
+        //for(int i = 0 ; i < 100 ; i++){
+        String InvoicePrefix="PRUE98000";
+        String path="D:\\Mohit\\UBL_OASIS\\Examples\\SuccessFull\\SalesInvoice1\\";
+        String Samplefile=path+"face_f09000140571905d78e4c.xml";
+        //invoicenumber++;
+        String newpath=path+"Third\\"+InvoicePrefix+invoicenumber;
+        File f = new File(newpath+"\\"); 
+        f.mkdirs();
+        Path sourceDirectory = Paths.get(Samplefile);
+        Path targetDirectory = Paths.get(newpath+"\\"+"face_fdv09000140571905d78e4c.xml");
+        Files.copy(sourceDirectory, targetDirectory);
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(true);
+        DocumentBuilder builder = null;
+        builder = factory.newDocumentBuilder();
+        Document doc = builder.parse(new File(newpath+"\\"+"face_fdv09000140571905d78e4c.xml"));
+        NodeList tag= doc.getElementsByTagName("cbc:ID");
+        org.w3c.dom.Node elemToSign= tag.item(0).getFirstChild();
+        elemToSign.setNodeValue(InvoicePrefix+invoicenumber);
+        NodeList tag1= doc.getElementsByTagName("cbc:UUID");
+        org.w3c.dom.Node elemToSign1= tag1.item(0).getFirstChild();
+        
+        String cufeInput = InvoicePrefix+invoicenumber+"201901160611311444608.00010.000259806.7703139549.132099532.4890001405731800199436dd85db55545bd6566f36b0fd3be9fd8555c36e";
+        String cufe = sha1(cufeInput);
+        elemToSign1.setNodeValue(cufe);
+        TransformerFactory transformerFactory = TransformerFactory.newInstance();
+        Transformer transformer = transformerFactory.newTransformer();
+        DOMSource source = new DOMSource(doc);
+        StreamResult result = new StreamResult(new File(newpath+"\\"+"face_fdv09000140571905d78e4c.xml"));
+        transformer.transform(source, result);
+        testSignEPES(newpath+"\\"+"face_fdv09000140571905d78e4c.xml");   
+        
+//          FileInputStream in = new FileInputStream(newpath+"\\"+"face_f09000140571905d78e4c.xml");
+//          ZipOutputStream out = new ZipOutputStream(new FileOutputStream(newpath+"\\ws_f0900014057324598c3a3.zip"));
+//          out.putNextEntry(new ZipEntry("face_f09000140571905d78e4c.xml")); 
+//          byte[] b = new byte[1024];
+//          int count;
+//          while ((count = in.read(b)) > 0) {
+//              out.write(b, 0, count);
+//          }
+//          out.close();
+//          in.close();
+
+//          DeflaterOutputStream dos= new DeflaterOutputStream(new FileOutputStream(newpath+"\\ws_fdv0900014057324598c3a3.zip"));
+//          FileInputStream fis= new FileInputStream(newpath+"\\"+"face_fdv09000140571905d78e4c.xml");
+//          int ch;
+//          while((ch=fis.read())!=-1){
+//              dos.write((byte)ch);
+//          }
+//          dos.close();
+//          fis.close();
+
+//          Path sourcePath = Paths.get(newpath+"\\"+"face_f09000140571905d78e4c.xml");
+//          try{
+//              ZipOutputStream zipOut = new ZipOutputStream(new FileOutputStream(newpath+"\\ws_f0900014057324598c3a3.zip"));
+//              zipOut.putNextEntry(new ZipEntry("face_f09000140571905d78e4c.xml"));
+//              Files.copy(sourcePath, zipOut);
+//              zipOut.closeEntry();
+//          } catch (IOException e) {
+//              e.printStackTrace();
+//          } // Invoke close().
+
+        
+//   }  
+//          File zipf = new File(newpath+"\\ws_f0900014057324598c3a3.zip");
+//          ZipOutputStream out = new ZipOutputStream(new FileOutputStream(zipf));
+//          ZipEntry e = new ZipEntry("face_f09011952841905d78e4c.xml");
+//          out.putNextEntry(e);
+//        
+//        
+//        
+//          FileInputStream in = new FileInputStream(newpath+"\\"+"face_f09011952841905d78e4c.xml");
+//          byte[] buffer = new byte[1024];  
+//          int len;
+//          while ((len = in.read(buffer)) > 0) {
+//    		out.write(buffer, 0, len);
+//          }
+//
+//          in.close();
+//          out.closeEntry(); 
+//           
+//          //remember close it
+//          out.close();
+        
+//        File file = new File(newpath+"\\"+"face_fdv09000140571905d78e4c.xml");
+//        if(!file.exists())
+//        {
+//            System.out.println("File not found.");
+//            System.exit(0);
+//        }
+//        System.out.print("Please enter zip file namewith extension .zip : ");
+        String zipFileName = newpath+"\\ws_fdv0900014057324598c3a3.zip";
+//        byte[] buffer = new byte[18024];
+//        try{
+//        ZipOutputStream out = new ZipOutputStream(new FileOutputStream(zipFileName));
+//        out.setLevel(Deflater.DEFAULT_COMPRESSION);
+//        FileInputStream in = new FileInputStream(newpath+"\\"+"face_fdv09000140571905d78e4c.xml");
+//        out.putNextEntry(new ZipEntry("face_fdv09000140571905d78e4c.xml"));
+//        int len;
+//        while ((len = in.read(buffer)) > 0){
+//        out.write(buffer, 0, len);
+//        }
+//        out.closeEntry();
+//        in.close();
+//        out.close();
+//        }
+//        catch (IllegalArgumentException iae){
+//        iae.printStackTrace();
+//        System.exit(0);
+//        }
+//        catch (FileNotFoundException fnfe){
+//        fnfe.printStackTrace();
+//        System.exit(0);
+//        }
+   //     ZipUtil.pack(new File(newpath), new File(zipFileName));
+   //(newpath+"\\"+"face_fdv09000140571905d78e4c.xml", "UTF-8").getBytes("UTF-8");
+//        byte[] bytes = FileUtils.readFileToString(new File(newpath+"\\"+"face_fdv09000140571905d78e4c.xml"), "UTF-8").getBytes("UTF-8");
+//         String xmlBase64 = Base64.encodeBase64String(bytes);
+//         File archivo = new File(zipFileName);
+//         BufferedWriter bw= new BufferedWriter(new FileWriter(archivo));
+//         bw.write(xmlBase64);
+        encode(zipFileName, newpath+"\\Encodeddata.txt", false);
+        String soapEndpointUrl = "https://facturaelectronica.dian.gov.co/habilitacion/B2BIntegrationEngine/FacturaElectronica/facturaElectronica.wsdl";
+        String soapAction = "http://facturaelectronica.dian.gov.co:80/habilitacion/B2BIntegrationEngine/FacturaElectronica";
+        callSoapWebService(soapEndpointUrl, soapAction,newpath+"\\Encodeddata.txt",InvoicePrefix+invoicenumber);
+        System.out.println("Done");
+        //  }
+    }
+
+    static String sha1(String input) throws NoSuchAlgorithmException {
+        MessageDigest mDigest = MessageDigest.getInstance("SHA1");
+        byte[] result = mDigest.digest(input.getBytes());
+        StringBuffer sb = new StringBuffer();
+        for (int i = 0; i < result.length; i++) {
+            sb.append(Integer.toString((result[i] & 0xff) + 0x100, 16).substring(1));
+        }
+         
+        return sb.toString();
+    }
+    private static void encode(String sourceFile, String targetFile, boolean isChunked) throws Exception {
+ 
+                
+        byte[] base64EncodedData = Base64.encodeBase64(loadFileAsBytesArray(sourceFile), isChunked);
+ 
+        writeByteArraysToFile(targetFile, base64EncodedData);
+    }
+     public static byte[] loadFileAsBytesArray(String fileName) throws Exception {
+ 
+        File file = new File(fileName);
+        int length = (int) file.length();
+        BufferedInputStream reader = new BufferedInputStream(new FileInputStream(file));
+        byte[] bytes = new byte[length];
+        reader.read(bytes, 0, length);
+        reader.close();
+        String s = new String(bytes,StandardCharsets.ISO_8859_1);
+        return s.getBytes(StandardCharsets.ISO_8859_1);
+ 
+    }
+    public static void writeByteArraysToFile(String fileName, byte[] content) throws IOException {
+ 
+        File file = new File(fileName);
+        BufferedOutputStream writer = new BufferedOutputStream(new FileOutputStream(file));
+        writer.write(content);
+        writer.flush();
+        writer.close();
+ 
+    }
+    
+    public static void testSignEPES(String inputfile) throws Exception
+    {
+        /* Create signature in one line */
+        System.setProperty("org.apache.xml.security.ignoreLineBreaks", "true");
+
+        
+        //Abre el archivo XML que se desea firmar
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(true);
+        DocumentBuilder builder = null;
+        builder = factory.newDocumentBuilder();
+        Document doc = builder.parse(new File(inputfile));
+        
+        //Crea el archivo de salida que va a tener el resultado (archivo XML firmado)
+     	OutputStream os = null;
+     	try {
+     		os = new FileOutputStream(inputfile);
+     	} catch (FileNotFoundException e) {
+     		e.printStackTrace();
+     		//throw new CustomException("Error creando archivo XML firmado. " + e.getMessage());
+     	}
+        
+     	//se establece el punto donde se requiere la firma (segundo elemento ext:ExtensionContent del XML
+     	NodeList tag= doc.getElementsByTagName("ext:ExtensionContent");//busca los elementos que concuerden con el string indicado
+        org.w3c.dom.Node elemToSign= tag.item(1);//encuentra el nodo en la lista anterior
+        DataObjectDesc dataObjRef = new DataObjectReference("").withTransform(new EnvelopedSignatureTransform());//crea un dataobject del xml para firmar
+      //  DataObjectDesc anonymousDataRef =  new AnonymousDataObjectReference("D:\\Mohit\\UBL_OASIS\\Examples\\Fetch Invoice\\SOAP_Req\\face_f09011952841905d78e4c.xml".getBytes()).withTransform(new EnvelopedSignatureTransform());
+
+        // politica
+        SignaturePolicyInfoProvider policyInfoProvider = new SignaturePolicyInfoProvider() {
+            @Override
+            public SignaturePolicyBase getSignaturePolicy() {
+                try {
+                    return new SignaturePolicyIdentifierProperty(new ObjectIdentifier("https://facturaelectronica.dian.gov.co/politicadefirma/v2/politicadefirmav2.pdf"),
+                            new URL("https://facturaelectronica.dian.gov.co/politicadefirma/v2/politicadefirmav2.pdf").openStream());
+                } catch (MalformedURLException ex) {
+                    //Logger.getLogger(StelaSign.class.getName()).log(Level.SEVERE, null, ex);
+                    return new SignaturePolicyImpliedProperty();
+                } catch (IOException ex) {
+                    //Logger.getLogger(StelaSign.class.getName()).log(Level.SEVERE, null, ex);
+                    return new SignaturePolicyImpliedProperty();
+                }
+           }
+        }; 
+
+       //Rol 
+        SignerEPES signer = (SignerEPES) new XadesEpesSigningProfile(keyingProviderMy, policyInfoProvider)               
+                .withSignaturePropertiesProvider(new SignaturePropertiesProvider() {
+                    @Override
+                    public void provideProperties(SignaturePropertiesCollector arg0) {
+                        SigningTimeProperty sigTime = new SigningTimeProperty();
+                        arg0.setSignerRole(new SignerRoleProperty().withClaimedRole("supplier"));
+                        arg0.setSigningTime(sigTime );    
+                    }
+
+	
+                })
+                .withBasicSignatureOptionsProvider(SignerBESTest.MyBasicSignatureOptionsProvider.class)
+                .withAlgorithmsProviderEx(new AlgorithmsProviderEx() {
+	                @Override
+	                public Algorithm getSignatureAlgorithm(String string) throws UnsupportedAlgorithmException {
+	                   //El algoritmo de firma debe ser RSAwithSHA1 como lo pide la DIAN
+	                   //return new GenericAlgorithm(SignatureMethod.RSA_SHA1);
+                           //http://www.w3.org/2000/09/xmldsig#rsa-sha1
+                           //http://www.w3.org/2001/04/xmldsig-more#rsa-sha256
+	                	return new GenericAlgorithm("http://www.w3.org/2000/09/xmldsig#rsa-sha1");
+	                }
+	        		@Override
+	        		public Algorithm getCanonicalizationAlgorithmForSignature() {
+	        			//return new GenericAlgorithm(Canonicalizer.ALGO_ID_C14N_EXCL_OMIT_COMMENTS);
+	        			return new GenericAlgorithm(Canonicalizer.ALGO_ID_C14N_OMIT_COMMENTS);
+	        		}
+	        		@Override
+	        		public Algorithm getCanonicalizationAlgorithmForTimeStampProperties() {
+	        			//return new GenericAlgorithm(Canonicalizer.ALGO_ID_C14N_EXCL_OMIT_COMMENTS);
+	        			return new GenericAlgorithm(Canonicalizer.ALGO_ID_C14N_OMIT_COMMENTS);
+	        		}
+	        		@Override
+	        		public String getDigestAlgorithmForDataObjsReferences() {
+	        			// TODO Auto-generated method stub
+	        			return Constants.ALGO_ID_DIGEST_SHA1;
+	        		}
+	        		@Override
+	        		public String getDigestAlgorithmForReferenceProperties() {
+	        			// TODO Auto-generated method stub
+	        			return Constants.ALGO_ID_DIGEST_SHA1;
+	        		}
+	        		@Override
+	        		public String getDigestAlgorithmForTimeStampProperties() {
+	        			// TODO Auto-generated method stub
+	        			return Constants.ALGO_ID_DIGEST_SHA1;
+	        		}
+            })
+                
+           .newSigner(); 
+        System.out.println("before sign...");
+        //firma el documento XML en la ubicacion donde lo pide la dian como enveloped
+        signer.sign(new SignedDataObjects(new DataObjectDesc[] { dataObjRef }), elemToSign,SignatureAppendingStrategies.AsFirstChild);//firma el dataobject en el nodo indicado ubicando la firma como primer elemento de dicho nodo
+        //Thread.sleep(10);
+        
+     	//crea Transformer
+        TransformerFactory tf = TransformerFactory.newInstance();
+        Transformer trans = null;
+    	try {
+    		trans = tf.newTransformer();
+    	} catch (TransformerConfigurationException e) {
+    		e.printStackTrace();
+    		os.close(); //cierra el archivo para no dejarlo abierto
+    		//throw new CustomException("Error transformando archivo XML para firmar. " + e.getMessage());
+    	}
+    	//procesar xml firmandolo y dejandolo en archivo de salida (os)
+    	try {
+    		trans.transform(new DOMSource(doc), new StreamResult(os));
+    	} catch (TransformerException e) {
+    		e.printStackTrace();
+    		os.close();
+    		//throw new CustomException("Error transformando archivo XML para firmar. " + e.getMessage());
+    	}        
+
+        outputDocument(doc, inputfile);
+        
+    }
+    
+    private static void createSoapEnvelope(SOAPMessage soapMessage,String documentPath,String invoicenumber) throws SOAPException, FileNotFoundException, IOException {
+        SOAPPart soapPart = soapMessage.getSOAPPart();
+
+        String myNamespace = "rep";
+        String myNamespaceURI = "http://www.dian.gov.co/servicios/facturaelectronica/ReportarFactura";
+
+        // SOAP Envelope
+        SOAPEnvelope envelope = soapPart.getEnvelope();
+        envelope.addNamespaceDeclaration(myNamespace, myNamespaceURI);
+
+            /*
+            Constructed SOAP Request Message:
+            <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:myNamespace="https://www.w3schools.com/xml/">
+                <SOAP-ENV:Header/>
+                <SOAP-ENV:Body>
+                    <myNamespace:CelsiusToFahrenheit>
+                        <myNamespace:Celsius>100</myNamespace:Celsius>
+                    </myNamespace:CelsiusToFahrenheit>
+                </SOAP-ENV:Body>
+            </SOAP-ENV:Envelope>
+            */
+            //Soap Header
+        SOAPHeader soapHeader = envelope.getHeader();
+        SOAPElement security =soapHeader.addChildElement("Security", "wsse", "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd");
+        SOAPElement usernameToken =security.addChildElement("UsernameToken", "wsse");
+        //    usernameToken.addAttribute(new QName("xmlns:wsu"), "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd");
+        SOAPElement username =usernameToken.addChildElement("Username", "wsse");
+        username.addTextNode("7ea0f8ea-2c18-4c18-8c82-ff1e663f73b1");
+        SOAPElement password =usernameToken.addChildElement("Password", "wsse");
+        //password.setAttribute("Type", "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText");
+        password.addTextNode("ac235fe15e9250936b1411f2aa1e5f32a1f6c69435e5cd43ff5b133775d836af");
+        SOAPElement nonce =usernameToken.addChildElement("Nonce", "wsse");   
+        nonce.addTextNode("FmbZRkx1jh2A+imgjD2fLQ==");
+        // SOAP Body
+        SOAPBody soapBody = envelope.getBody();
+        SOAPElement soapBodyElem = soapBody.addChildElement("EnvioFacturaElectronicaPeticion", myNamespace);
+        SOAPElement soapBodyElem1 = soapBodyElem.addChildElement("NIT", myNamespace);
+        soapBodyElem1.addTextNode("900014057");
+        SOAPElement soapBodyElem2 = soapBodyElem.addChildElement("InvoiceNumber", myNamespace);
+        soapBodyElem2.addTextNode(invoicenumber);
+        SOAPElement soapBodyElem3 = soapBodyElem.addChildElement("IssueDate", myNamespace);
+        soapBodyElem3.addTextNode("2019-01-16T06:11:31");
+        SOAPElement soapBodyElem4 = soapBodyElem.addChildElement("Document", myNamespace);
+        File file = new File(documentPath); 
+  
+        BufferedReader br = new BufferedReader(new FileReader(file)); 
+        StringBuilder sb = new StringBuilder();
+        String st; 
+        while ((st = br.readLine()) != null) {
+          sb.append(st); 
+        } 
+        
+        soapBodyElem4.addTextNode(sb.toString());
+    }
+
+    private static void callSoapWebService(String soapEndpointUrl, String soapAction,String documentPath,String invoiceNumber) {
+        try {
+            // Create SOAP Connection
+            SOAPConnectionFactory soapConnectionFactory = SOAPConnectionFactory.newInstance();
+            SOAPConnection soapConnection = soapConnectionFactory.createConnection();
+
+            // Send SOAP Message to SOAP Server
+            SOAPMessage soapResponse = soapConnection.call(createSOAPRequest(soapAction,documentPath,invoiceNumber), soapEndpointUrl);
+
+            // Print the SOAP Response
+            System.out.println("Response SOAP Message:");
+            soapResponse.writeTo(System.out);
+            System.out.println();
+
+            soapConnection.close();
+        } catch (Exception e) {
+            System.err.println("\nError occurred while sending SOAP Request to Server!\nMake sure you have the correct endpoint URL and SOAPAction!\n");
+            e.printStackTrace();
+        }
+    }
+
+    private static SOAPMessage createSOAPRequest(String soapAction,String documentPath,String invoiceNumber) throws Exception {
+        MessageFactory messageFactory = MessageFactory.newInstance();
+        SOAPMessage soapMessage = messageFactory.createMessage();
+
+        createSoapEnvelope(soapMessage,documentPath,invoiceNumber);
+
+        MimeHeaders headers = soapMessage.getMimeHeaders();
+        headers.addHeader("SOAPAction", soapAction);
+
+        soapMessage.saveChanges();
+
+        /* Print the request message, just for debugging purposes */
+        System.out.println("Request SOAP Message:");
+        soapMessage.writeTo(System.out);
+        System.out.println("\n");
+
+        return soapMessage;
+    }
+}
